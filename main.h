@@ -1,6 +1,5 @@
 
 #include <stdint.h>
-#include <time.h>
 
 #include "board.h"
 #include "fsl_dac_driver.h"
@@ -8,25 +7,8 @@
 
 int majorKey[] = {0,2,4,5,7,9,11};
 
-enum gamestate {
-	//playingsound,
-	gameover,
-	awaitingresponse,
-	awaitingnextround
-} currentstate;
-
-srand(time(NULL));
-
-int randomPitchGenerator(void) {
-	int pitchnum = majorKey[rand() % 7];
-	return pitchnum;
-}
-
 //Sets up DAC
 void setupDAC(void);
-
-//Plays a tone
-void play(int pitchNum);
 
 //Sets up the timer
 void setupTimer(void);
@@ -34,16 +16,23 @@ void setupTimer(void);
 //Sets up GPIO pins
 void setupPins(void);
 
+//Plays a tone
+void play(int pitchNum);
+
+//Flashes an LED
 void blink(int pitchNum);
 
-void startGame(void);
-
-void indicateGameEnding(void);
-
+//Plays appropriate response to user input
 void respondToAnswer(int pitchNum);
 
+//Plays new tone
 void nextRound(void);
 
+//Runs demonstration at beginning
 void runDemo(void);
 
+//Generates Random Pitch
+int randomPitchGenerator(void);
+
+//Standard manual delay
 void delay(void);

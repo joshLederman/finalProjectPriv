@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "fsl_clock_manager.h"
@@ -74,13 +75,30 @@ int main (void) {
 	//Runs the introductory demo of the device to show the pitches
 	runDemo();
 	
+	//Variables for pseudo randomness. Counter which records iterations until user input
+	uint32_t pseudoRandCounter = 0;
+	uint8_t firstRound = 1; //Records whether this is the first round
+	
 	//Primary loop - each loop represents one round (one pitch, one button press)
 	while(1) {
 		//Plays the pitch
 		nextRound();
 		
 		//Waits for user input
-		while((~(PTC->PDIR) & PortCUsed) == 0x00);
+		
+		//Generates random seed during the first round
+		if (firstRound) {
+			while((~(PTC->PDIR) & PortCUsed) == 0x00) {
+				if (pseudoRandCounter < (2^32 -1))
+					pseudoRandCounter++;
+				else
+					pseudoRandCounter = 0;
+			}
+			firstRound = 0;
+			srand(pseudoRandCounter);
+		}
+		else
+			while((~(PTC->PDIR) & PortCUsed) == 0x00);
 		//Records the input when it occurs
 		uint32_t response = (~(PTC->PDIR) & PortCUsed);
 		
@@ -254,6 +272,11 @@ void nextRound(void) {
 	play(p); //Outputs the sound
 }
 
+//Generates random pitch
+int randomPitchGenerator(void) {
+	int pitchnum = majorKey[rand() % 7];
+	return pitchnum;
+}
 //Standard delay for the LED output and wait time between correct responses
 void delay(void) {
 	for (int i = 0; i < 20000000; i++);
@@ -264,8 +287,6 @@ void PIT0_IRQHandler(void) {
 	PIT_TFLG0 = 1; //Clears the timeout
 	PIT->CHANNEL[0].LDVAL = interPeriod; //Resets timer
 	timeRemain--; //Reduces overall timer (should never enter as 0)
-	uint8_t temp = DAC_DRV_GetBuffCurIdx(dacInstance);
-	uint8_t bufferSetting = DAC0_C2;
 	//Moves buffer pointer one position forward
 	DAC_DRV_SoftTriggerBuffCmd(dacInstance);
 }
