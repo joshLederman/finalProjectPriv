@@ -1,5 +1,6 @@
 
 #include <stdint.h>
+#include <time.h>
 
 #include "board.h"
 #include "fsl_dac_driver.h"
@@ -13,6 +14,8 @@ enum gamestate {
 	awaitingresponse,
 	awaitingnextround
 } currentstate;
+
+srand(time(NULL));
 
 int randomPitchGenerator(void) {
 	int pitchnum = majorKey[rand() % 7];
