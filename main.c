@@ -23,10 +23,10 @@ uint16_t bufferVal[] = {0x000,0x02D,0x0B1,0x187,0x2A6,0x400,0x587,0x72A,0x8D6,0x
 uint16_t pitch[] = {262,277,294,311,330,349,370,392,415,440,466,494};
 
 //Converts pitch index to output pin number
-uint8_t pitchToLED[] = {11,0,10,0,3,2,0,20,0,18,0,19,9};
+uint8_t pitchToLED[] = {11,0,10,0,3,2,0,20,0,18,0,19};
 
 //Converts output pin number to pitch index
-uint8_t buttonToPitch[] = {11,7,0,0,0,0,0,0,9,11,0,2,0,0,0,0,4,5};
+uint8_t buttonToPitch[] = {0,7,0,0,0,0,0,0,9,11,0,2,0,0,0,0,4,5};
 
 //A 60 MHz PIT clock produces the appropriate output frequency
 uint32_t clockFreq = 60000000;
