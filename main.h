@@ -19,10 +19,8 @@ int randomPitchGenerator(void) {
 	return pitchnum;
 }
 
-//Configures DAC
-void device_config(void);
-
-void device_deinit(void);
+//Sets up DAC
+void setupDAC(void);
 
 //Plays a tone
 void play(int pitchNum);

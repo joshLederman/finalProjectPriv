@@ -11,6 +11,9 @@
 
 //Constant references
 
+//Represents DAC instance, needed for KSDK 
+uint8_t dacInstance = 0;
+
 //Buffer values needed to form a sinusoidal wave
 uint16_t bufferVal[] = {0x000,0x02D,0x0B1,0x187,0x2A6,0x400,0x587,0x72A,0x8D6,0xA79,0xC00,0xD54,0xE79,0xF4F,0xFD3,0xFFF};
 
@@ -25,8 +28,8 @@ uint8_t pitchToLED[] = {11,0,10,0,3,2,0,20,0,18,0,19,9};
 //Converts output pin number to pitch index
 uint8_t buttonToPitch[] = {11,7,0,0,0,0,0,0,9,11,0,2,0,0,0,0,4,5};
 
-//A 2 MHz PIT clock produces the appropriate output frequency
-uint32_t clockFreq = 2000000;
+//A 60 MHz PIT clock produces the appropriate output frequency
+uint32_t clockFreq = 60000000;
 
 //Represents pins used for input and output on a bit level
 //For example, the least significant C in Port B - 0xC -> 1110 -> pin 1, 2, and 3 (but not 0)
@@ -38,7 +41,7 @@ uint32_t PortCUsed = 0x030F83;
 //Buffer confiuration struct
 dac_buffer_config_t *g_dacConfig;
 
-//Represents number of PIT interrupts before next DAC output value
+//Represents number of PIT cycles before next DAC output value (interrupt)
 uint32_t interPeriod = 0;
 	
 //Length of time in seconds for tone to play (float allows it to be less than 1)
@@ -65,6 +68,9 @@ int main (void) {
 	//Sets up the GPIO pins used to input from the buttons and output to the LEDs
 	setupPins();
 	
+	//Sets up DAC configuration
+	setupDAC();
+	
 	//Runs the introductory demo of the device to show the pitches
 	runDemo();
 	
@@ -90,125 +96,18 @@ int main (void) {
 			//Runs the LED output
 			respondToAnswer(buttonToPitch[buttonNum]);
 	}
-	
-	//Test of LEDs
-	/*
-	while(1) {
-		//PTB->PDOR = (((PTC->PDOR >> {PTC Pin Num}) & 1) << {PTB Pin Num})
-		PTB->PDOR = ((~(PTC->PDIR >> 10) & 1) << 11) | 
-								((~(PTC->PDIR >> 11) & 1) << 10) |
-								((~(PTC->PDIR >> 16) & 1) << 3)  |
-								((~(PTC->PDIR >> 17) & 1) << 2)	 |
-								((~(PTC->PDIR >> 1) & 1) << 20)  |
-								((~(PTC->PDIR >> 8) & 1) << 18)  |
-								((~(PTC->PDIR >> 9) & 1) << 19)  |
-								((~(PTC->PDIR >> 0) & 1) << 9)
-		;
-		//PTB->PDOR &= ~((~(PTC->PDIR >> 10) & 1) << 11);
-		//PTB->PDOR |= ((~(PTC->PDIR >> 11) & 1) << 11); //PTC11, PTB10
-		//PTB->PDOR &= ~((~(PTC->PDIR >> 11) & 1) << 10);
-		
-	}*/
-	
-	//device_deinit();
 }
 
-void device_config() {
-	//Allocates memory for a struct representing the buffer configuration
-	//g_dacConfig = (dac_buffer_config_t *)OSA_MemAlloc(sizeof(dac_buffer_config_t));
-
-	dac_converter_config_t dacConfigStruct;
-	dac_buffer_config_t dacBuffConfigStruct;
-	
-	DAC_DRV_StructInitUserConfigNormal(&dacConfigStruct);
-	
-	DAC_DRV_Init(BOARD_DAC_DEMO_DAC_INSTANCE, &dacConfigStruct);
-	
-	//Configures buffer settings in g_dacConfig
-	//Enables buffer
-	dacBuffConfigStruct.bufferEnable = true; 
-	//Software moves to the next buffer entry
-	dacBuffConfigStruct.triggerMode = kDacTriggerBySoftware;
-	//Buffer works in swing mode - it goes up and down along buffer
-	dacBuffConfigStruct.buffWorkMode = kDacBuffWorkAsSwingMode;
-	//Uses full buffer (16 elements, represented as a value 0-15)
-	dacBuffConfigStruct.upperIdx = 15;
-	//Turns off everything else
-	dacBuffConfigStruct.idxStartIntEnable = false;
-	dacBuffConfigStruct.idxUpperIntEnable = false;
-	dacBuffConfigStruct.idxWatermarkIntEnable = false;
-	dacBuffConfigStruct.dmaEnable = false;
-	dacBuffConfigStruct.watermarkMode = kDacBuffWatermarkFromUpperAs1Word;
-	
-	DAC_DRV_ConfigBuffer(BOARD_DAC_DEMO_DAC_INSTANCE, &dacBuffConfigStruct);
-	
-	DAC_DRV_SetBuffValue(BOARD_DAC_DEMO_DAC_INSTANCE, 0, 16, bufferVal);
-	
-	/*for (i = 0; i < 16; i++) {
-		DAC_DRV_SetBuffValue(BOARD_DAC_DEMO_DAC_INSTANCE, i, 16, &bufferVal[i]);
-	}*/
-
-	//Trigger first value
-	DAC_DRV_SoftTriggerBuffCmd(BOARD_DAC_DEMO_DAC_INSTANCE);
-	
-	/*
-	//The full length of the buffer (16 elements - length(0:15)) will be used
-	g_dacConfig->upperIdx = 15; 
-	
-	//Set Buffer config registers to reset state
-	DAC_HAL_Init(DAC0);
-	
-	
-	
-	//Assign configuration values set above to appropriate registers
-	DAC_DRV_ConfigBuffer(BOARD_DAC_DEMO_DAC_INSTANCE,g_dacConfig);
-	
-	//Sets the 16 appropriate buffer values in the DAC
-	DAC_DRV_SetBuffValue(BOARD_DAC_DEMO_DAC_INSTANCE,0,16,bufferVal);
-	
-	//Enables DAC
-	DAC_HAL_Enable(DAC0);*/
-}
-
-void device_deinit() {
-    // De initialize DAC
-    DAC_DRV_Deinit(BOARD_DAC_DEMO_DAC_INSTANCE);
-}
-
-void blink(int pitchNum) {
-	PTB->PDOR = (1 << pitchToLED[pitchNum]);
-	delay();
-	PTB->PDOR = 0x00;
-}
-
-void play(int pitchNum) {
-	double period_s = 1/(double)pitch[pitchNum];
-	interPeriod = (int)clockFreq*period_s;
-	
-	timeRemain = duration*pitch[pitchNum]*30;
-	
-	device_config(); //Configure DAC and enables it
-	
-	//Turns on timer and enables interrupts
-	PIT_TFLG0 = 1;
-	PIT->CHANNEL[0].LDVAL = interPeriod;
-	PIT->CHANNEL[0].TCTRL = 3;
-	
-	while (timeRemain != 0); //Plays tone
-	
-	PIT->CHANNEL[0].TCTRL = 1; //Disable interrupts to turn off timer
-	
-	device_deinit(); //Quits DAC
-}
-	
+//Configures the PIT Timer
 void setupTimer(void) {
-	SIM->SCGC6 = SIM_SCGC6_PIT_MASK;
-	PIT_MCR = 0;
-	PIT->CHANNEL[0].LDVAL = 0;
-	PIT->CHANNEL[0].TCTRL = 1; //Disable Interrupts - sound is off
+	SIM->SCGC6 = SIM_SCGC6_PIT_MASK; 	//Turns on clock
+	PIT_MCR = 0;											//Clears Module Control Register
+	PIT->CHANNEL[0].LDVAL = 0;				//No Timer Value
+	PIT->CHANNEL[0].TCTRL = 1; 				//Disable PIT Interrupts - sound is off
 	NVIC_EnableIRQ(PIT0_IRQn);
 }
 
+//Configures the GPIO Pins
 void setupPins(void) {
 	SIM->SCGC5    |= (1 <<  10) | (1 <<  11);  /* Enable Clock to Port B & C */ 
   //Ports B pins are output
@@ -216,8 +115,7 @@ void setupPins(void) {
 	
 	//Ports C pins are input
 	//Used: pin 10,11,1,8,9,0,7,16,17
-	
-	
+		
 	//Sets all appropriate pins as GPIO
 	PORTB->PCR[2] = (1 <<  8) ;
 	PORTB->PCR[3] = (1 <<  8) ;
@@ -242,61 +140,123 @@ void setupPins(void) {
 	PTB->PDDR |= PortBUsed; //All of port B is output
 	PTC->PDDR &= ~(PortCUsed); //All of port C is input
   
+	//Clears Port B (all LEDs are off)
 	PTB->PDOR &= ~PortBUsed;
 }
 
-void PIT0_IRQHandler(void) {
-	PIT_TFLG0 = 1; //Clears the timeout
-	PIT->CHANNEL[0].LDVAL = interPeriod; //Resets timer
-	timeRemain--; //Reduces overall timer (should never enter as 0)
-	uint8_t temp = DAC_DRV_GetBuffCurIdx(BOARD_DAC_DEMO_DAC_INSTANCE);
-	uint8_t bufferSetting = DAC0_C2;
-	//Moves buffer pointer one position forward
-	DAC_DRV_SoftTriggerBuffCmd(BOARD_DAC_DEMO_DAC_INSTANCE);
-}
-
-void indicateGameEnding(void) {
+//Configures the DAC
+void setupDAC(void) {
 	
+	//Sets up the DAC at a basic level (KSDK functions and structs)
+	dac_converter_config_t dacConfigStruct;
+	DAC_DRV_StructInitUserConfigNormal(&dacConfigStruct);
+	DAC_DRV_Init(dacInstance, &dacConfigStruct);
+	
+	//This is a KSDK struct representing the specific buffer configuration
+	//Internal values represent the settings of the DAC buffer
+	dac_buffer_config_t dacBuffConfigStruct;
+	
+	//Enables buffer
+	dacBuffConfigStruct.bufferEnable = true; 
+	//Allows the software PIT ISR to trigger the buffer pointer to move to the next element
+	dacBuffConfigStruct.triggerMode = kDacTriggerBySoftware;
+	//Buffer works in swing mode - it goes up and down along buffer (buffer contains half of sine wave)
+	dacBuffConfigStruct.buffWorkMode = kDacBuffWorkAsSwingMode;
+	//Uses full buffer (16 elements, represented as a value 0-15)
+	dacBuffConfigStruct.upperIdx = 15;
+	//Turns off everything else
+	dacBuffConfigStruct.idxStartIntEnable = false;
+	dacBuffConfigStruct.idxUpperIntEnable = false;
+	dacBuffConfigStruct.idxWatermarkIntEnable = false;
+	dacBuffConfigStruct.dmaEnable = false;
+	dacBuffConfigStruct.watermarkMode = kDacBuffWatermarkFromUpperAs1Word; //Default setting
+	
+	//Applies the configuration created above
+	DAC_DRV_ConfigBuffer(dacInstance, &dacBuffConfigStruct);
+	
+	//Loads the 16 values representing a sinusoid into the buffer registers
+	DAC_DRV_SetBuffValue(dacInstance, 0, 16, bufferVal);
 }
 
-void respondToAnswer(int p) {
-	if (p != mostrecent) {
-		strikes += 1;
-		blink(mostrecent);
-	}
-	else
-		delay(); //Compensates for lack of break in blink
-	if (strikes == 3) {
-		indicateGameEnding();
-		currentstate = gameover;
-	} else {
-		currentstate = awaitingnextround;
-	}
-}
-
-void nextRound(void) {
-	int p = randomPitchGenerator();
-	mostrecent = p;
-	play(p);
-}
-
+//Runs the introductory demonstration
 void runDemo(void) {
-	float setDur = duration;
-	duration = 0.25; //Slower duration for demo;
+	float setDur = duration; //Saves intial duration value
+	duration = 0.25; //Slower duration for demo
+	//Runs increasing scale (LEDs and sound)
 	for (int8_t i = 0; i < 7; i++) {
 		PTB->PDOR = (1 << pitchToLED[majorKey[i]]);
 		play(majorKey[i]);
 	}
+	//Runs decreasing scale
 	for (int8_t i = 5; i >= 0; i--) {
 		PTB->PDOR = (1 << pitchToLED[majorKey[i]]);
 		play(majorKey[i]);
 	}
+	//Clears LED from final loop
 	PTB->PDOR = 0x00;
+	//Waits time before starting game
 	delay();
+	//Restores duration
 	duration = setDur;
 }
 
-//standard delay
+//Turns on LED associated with a pitch for a short period of time
+void blink(int pitchNum) {
+	PTB->PDOR = (1 << pitchToLED[pitchNum]); //Sets appropriate GPIO output
+	delay();
+	PTB->PDOR = 0x00;	//Clears GPIO output
+}
+
+//Plays the indicated tone for a period of time indicated by duration
+void play(int pitchNum) {
+	double period_s = 1/(double)pitch[pitchNum]; //Calculated the time in seconds bewteen cycles
+	//There are 30 points per cycle of the sine wave for the DAC output
+	interPeriod = (int)clockFreq*period_s/30;	//Calculates period bewteen DAC outputs in PIT cycles
+	
+	//Calculates number of interrupts required to have one second output
+	timeRemain = duration*pitch[pitchNum]*30;
+	
+	//Turns on timer and enables interrupts
+	PIT_TFLG0 = 1;
+	PIT->CHANNEL[0].LDVAL = interPeriod/30;
+	PIT->CHANNEL[0].TCTRL = 3; //Enables interrupts to begin timer
+	
+	while (timeRemain != 0); //Plays tone until one second has passed
+	
+	PIT->CHANNEL[0].TCTRL = 1; //Disable interrupts to turn off timer
+}
+	
+//Called when there us a button input
+void respondToAnswer(int p) {
+	if (p != mostrecent) { //If the pitch is not the one outputted
+		strikes += 1;
+		blink(mostrecent); //Blink the correct answer
+	}
+	else
+		delay(); //Compensates for lack of break in blink
+	//if (strikes == 3)
+		//If game ends, run something here ------------------------------------------------------------
+}
+
+//Called to play a new tone
+void nextRound(void) {
+	int p = randomPitchGenerator(); //Generates new pitch
+	mostrecent = p; //Records the pitch
+	play(p); //Outputs the sound
+}
+
+//Standard delay for the LED output and wait time between correct responses
 void delay(void) {
 	for (int i = 0; i < 20000000; i++);
+}
+
+//PIT Interrupt, triggering move to next buffer
+void PIT0_IRQHandler(void) {
+	PIT_TFLG0 = 1; //Clears the timeout
+	PIT->CHANNEL[0].LDVAL = interPeriod/30; //Resets timer
+	timeRemain--; //Reduces overall timer (should never enter as 0)
+	uint8_t temp = DAC_DRV_GetBuffCurIdx(dacInstance);
+	uint8_t bufferSetting = DAC0_C2;
+	//Moves buffer pointer one position forward
+	DAC_DRV_SoftTriggerBuffCmd(dacInstance);
 }
