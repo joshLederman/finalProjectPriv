@@ -238,7 +238,7 @@ void respondToAnswer(int p) {
         if (strikes == 4) {
             int pos = 0;
             while(1) {
-                if (pos == 8) pos = 0;
+                if (pos == 7) pos = 0;
                 play(pos);
                 blink(pos);
                 pos += 1;
