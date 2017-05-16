@@ -234,8 +234,16 @@ void respondToAnswer(int p) {
 	}
 	else
 		delay(); //Compensates for lack of break in blink
-	//if (strikes == 3)
-		//If game ends, run something here ------------------------------------------------------------
+        //If game ends, run something here ------------------------------------------------------------
+        if (strikes == 4) {
+            int pos = 0;
+            while(1) {
+                if (pos == 8) pos = 0;
+                play(pos);
+                blink(pos);
+                pos += 1;
+            }
+        }
 }
 
 //Called to play a new tone
