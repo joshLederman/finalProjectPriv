@@ -234,15 +234,16 @@ void respondToAnswer(int p) {
 	}
 	else
 		delay(); //Compensates for lack of break in blink
-        //If game ends, run something here ------------------------------------------------------------
+        //If you get four strikes, the game ends - plays an infinite loop of lights and sounds
         if (strikes == 4) {
-            int pos = 0;
-            while(1) {
-                if (pos == 7) pos = 0;
-                play(pos);
-                blink(pos);
-                pos += 1;
-            }
+					duration = 0.25; //Increase speed
+					for (uint8_t i = 0; i< 4; i++) {
+						PTB->PDOR = PortBUsed; //Flashes all lights
+						play(majorKey[1]);
+						PTB->PDOR = 0x00;
+						play(majorKey[0]);
+					}
+					while(1); //End of game
         }
 }
 
