@@ -218,7 +218,7 @@ void play(int pitchNum) {
 	
 	//Turns on timer and enables interrupts
 	PIT_TFLG0 = 1;
-	PIT->CHANNEL[0].LDVAL = interPeriod/30;
+	PIT->CHANNEL[0].LDVAL = interPeriod;
 	PIT->CHANNEL[0].TCTRL = 3; //Enables interrupts to begin timer
 	
 	while (timeRemain != 0); //Plays tone until one second has passed
@@ -253,7 +253,7 @@ void delay(void) {
 //PIT Interrupt, triggering move to next buffer
 void PIT0_IRQHandler(void) {
 	PIT_TFLG0 = 1; //Clears the timeout
-	PIT->CHANNEL[0].LDVAL = interPeriod/30; //Resets timer
+	PIT->CHANNEL[0].LDVAL = interPeriod; //Resets timer
 	timeRemain--; //Reduces overall timer (should never enter as 0)
 	uint8_t temp = DAC_DRV_GetBuffCurIdx(dacInstance);
 	uint8_t bufferSetting = DAC0_C2;
